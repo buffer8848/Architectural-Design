@@ -1,5 +1,7 @@
 #define MMEM_PAGESHIFT      12
+
 #define MMEM_PAGESIZE       (1<<(MMEM_PAGESHIFT))
 
 #define MMEM_PAGEMASK        ((MMEM_PAGESIZE)-1)
+
 #define MMEM_PAGEALIGN(x)    (((x) + (MMEM_PAGEMASK)) & ~MMEM_PAGEMASK)
