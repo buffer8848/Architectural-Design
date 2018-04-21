@@ -1,0 +1,52 @@
+ICU windows版裁剪操作说明
+1. 使用完整版的ICU
+1.下载指定ICU的版本
+http://apps.icu-project.org/icu-jsp/downloadPage.jsp?ver=60.1&base=cs&svn=release-60-1
+
+2.解压并进入到icu\source\allinone，打开vs工程，选择相应的编译选型进行编译。
+3.编译完成后在最外层指定的lib*,bin*文件夹里面找到对应的dll和lib文件，并copy相关的include文件进行开发。
+2.对ICU进行裁剪
+1. 数据文件介绍
+在icu/source/data目录中：
+brkitr目录中的文件是用来断开文本的。以*dict.txt命名的文件是词库。line*.txt文件是分行规则，word*.txt是分词规则。还有其他文件，只有几K大小，可以忽略。
+coll目录中的文件是语言相关的字符串处理（Unicode Collation Algorithm）的数据文件。
+curr目录中的文件是货币代码数据。
+lang目录中的文件是语言数据。
+locales目录中的文件是文字的本地化数据。
+mappings目录中的文件是文字的code page转换映射数据。
+misc目录中的文件是其他的数据文件，比如时区、日历等等。
+rbnf目录中的文件是数字转换数据文件。
+region是世界地域数据文件。
+sprep目录中的文件是Unicode Code Point数据信息。
+translit目录中的文件是文字转换的数据信息。
+unidata目录中的文件是Unicode数据信息。
+unit目录中的文件是单位数据信息。
+zone目录中的文件是时区数据信息。
+
+2. 官方icu定制工具
+http://apps.icu-project.org/datacustom/
+从这里可以了解什么数据可以裁剪，什么数据不能裁剪是必须的。
+
+3. 自定义裁剪
+通过对icu/source/data/makedata.mak分析发现，icudt*.dll的生成先是由subdata工程生成一个dll的壳子，在所有dll和exe生成之后，会最后调用makedata.mak文件将data的资源文件归档到icudt*.dll中最终生成可用的dll包。
+如果在icu/source/data/in/目录下已经存在了icudt*.dat文件，那么脚本会直接把这个文件进行解压缩到icu/source/data/out/build目录下面，输出其包含的资源清单，最后通过pkgdata工具将这些资源文件合入到dll。所以最简单的裁剪办法就是去http://apps.icu-project.org/datacustom/上通过勾选生成裁剪后的dat包，然后替换到原来位置，执行makedata.mak文件进行编译即可。（但目前有个坑，官网这个链接不会及时的更新，例如我现在需要icu60的版本，结果网站上只能定制57的版本，结果强行将57的dat文件合入到dll中，程序调用用返回miss resource）
+
+如果不存在这个icudt*.dat文件，那么会先生成dat文件，但是目前尝试了很多次，没有办法编译成功。经过多上面的命令进行分析。发现icudt*.dat在生成清单文件icudt.lst文件后，再用pkbdata文件根据这个清单文件把资源合入到dll中，于是我们在这个地方动手脚。
+1.打开icudt.lst文件
+
+列出了icudt*.dat里面包含的所有的资源，我们只需要对这个列表进行有选择的删除，然后重新调用命令：
+"D:\work\research\icu4c-60_1-src\icu\bin64\pkgdata" -f -e icudt60 -v -m dll -c -p icudt60l -T "D:\work\research\icu4c-60_1-src\icu\source\data\out\tmp" -L icudt60 -d "D:\work\research\icu4c-60_1-src\icu\source\data\out\build\icudt60l" -s . "D:\work\research\icu4c-60_1-src\icu\source\data\out\tmp\icudata.lst"
+生成新的icudt*.dll后就是我们想要裁剪的文件了。
+4. 举例
+
+本文在去除了这些目录下的文件后，重新打包将包从原来的26m下降到5m。
+其中mapping文件是以.cnv文件为结尾的文件，在文本编辑器中用
+^\S+.cnv$
+正则表达式把所有.cnv的文件删除
+
+最后如果还有时间可以对剩下5m进行精简，一个一个排除然后运行起来测试，最终我将大小缩小到300多kb。
+3.参考
+http://userguide.icu-project.org/icudata
+http://gclxry.com/custom-chromium-icu-library/
+http://apps.icu-project.org/datacustom/
+
